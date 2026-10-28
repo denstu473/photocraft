@@ -101,9 +101,18 @@ fn point_to_paragraph_keeps_trailing_space_extent() {
                 assert_eq!(l.lines.len(), 1, "unexpected wrap: {depth}/{align}/{spaces}");
                 assert_eq!(l.lines[0].range.end, edited.len(), "appended I is hidden: {depth}/{align}/{spaces}");
                 assert_eq!(text(&s, id).text, edited);
-                assert_ne!(ink(&s, id), before, "appended I was not rendered: {depth}/{align}/{spaces}");
+                // Point text has no frame to clip the I: compare actual pixels with that control.
+                let mut visible = point.clone();
+                replace_text(&mut visible, original.len(), original.len(), "I");
+                refresh_at(st.doc.resolution_dpi, st.doc.pixel_format(), &mut visible);
+                let visible = visible.cache.as_ref().unwrap();
                 let edited_layer = text(&s, id).clone();
                 let edited_ink = ink(&s, id);
+                let region = visible.content_bounds().union(&edited_ink);
+                assert!(
+                    edited_layer.cache.as_ref().unwrap().read_region(region) == visible.read_region(region),
+                    "rendering differs from the visible-I point-text control: {depth}/{align}/{spaces}"
+                );
                 assert!(s.undo());
                 assert_eq!(text(&s, id), &paragraph);
                 assert_eq!(ink(&s, id), before);
