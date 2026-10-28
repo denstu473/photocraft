@@ -105,11 +105,14 @@ pub(super) fn shift_layer(l: &mut Layer, dx: i32, dy: i32) {
 }
 
 fn subtree_bounds(l: &Layer, canvas: Rect) -> Rect {
-    match &l.content {
+    let bounds = match &l.content {
         LayerContent::Group(g) => g.children.iter().map(|c| subtree_bounds(c, canvas)).fold(Rect::EMPTY, |a, b| a.union(&b)),
         LayerContent::Adjustment(_) | LayerContent::Fill(_) => canvas,
         _ => l.surface().map_or(Rect::EMPTY, Surface::content_bounds),
-    }
+    };
+    // Effects become embedded content too. Grow each subtree by the compositor's bounded
+    // reach, including a group's effects after those of its children.
+    if !bounds.is_empty() && photocraft_compose::effects::has_effects(l) { bounds.inflate(photocraft_compose::effects::margin(l)) } else { bounds }
 }
 
 fn any_layer(l: &Layer, f: &dyn Fn(&Layer) -> bool) -> bool {
@@ -165,8 +168,7 @@ pub fn layers_to_smart(doc: &Document, name: &str, layers: Vec<Layer>) -> Result
         // Nested PSD placed layers find their embedded files here.
         sub.metadata.psd_global_blocks = doc.metadata.psd_global_blocks.clone();
     }
-    let has_fx = layers.iter().any(|l| any_layer(l, &|x| x.effects.enabled && !x.effects.items.is_empty()));
-    let region = layers.iter().map(|l| subtree_bounds(l, canvas)).fold(canvas, |a, b| a.union(&b)).inflate(if has_fx { 256 } else { 0 });
+    let region = layers.iter().map(|l| subtree_bounds(l, canvas)).fold(canvas, |a, b| a.union(&b));
     sub.layers = layers;
 
     let buf = photocraft_compose::render(&sub, region);
