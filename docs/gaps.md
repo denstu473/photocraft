@@ -211,9 +211,12 @@ what an agent can't finish alone.
 
 ### G3. User-reported bug backlog
 - **2026-10-28 evidence (#9740):** Smart Object conversion sizes its render region using the
-  compositor's bounded effect margin for each layer and group. Long shadows survive conversion,
+  compositor's effect-source bounds and bounded margin for each layer and group. Long shadows survive conversion,
   native save/reopen and Save Contents; regression coverage includes RGB8/16/32, both horizontal
-  directions, small/large source canvases, and effects on groups or their children. Overall
+  directions, small/large source canvases, effects on groups or their children, and strokes on
+  transparent-filled shapes. Conversion rejects render regions above the renderer's pixel cap
+  or an estimated dense-buffer working budget of 1 GiB on 64-bit targets / 256 MiB on 32-bit
+  targets, before rendering, with a size-limit error that preserves the document. Overall
   readiness and estimates are unchanged.
 - **Missing:** fixes for 579 open issues (2026-10-10), filed mostly by 0.5/0.6 users. By title:
   ~150 UI/panels/menus/shortcuts, 94 file/format, 87 layers, 54 painting, 54 selection,
